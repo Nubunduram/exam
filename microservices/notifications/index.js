@@ -1,14 +1,15 @@
-// notifi/server.js
+// microservices/notifications/index.js
+require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser');
+const morgan = require('morgan');
 const nodemailer = require('nodemailer');
-require('dotenv').config()
-//console.log(`process evn is ${JSON.stringify(process.env)}`)
+const logger = require('./logger');
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
+app.use(morgan('combined', { stream: logger.stream }));
 
-// Configuration de Nodemailer
+// Configuration de Nodemailer (les identifiants ne sont JAMAIS journalisés)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -17,15 +18,13 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-console.log(`rocess.env.EMAIL_USER is ${process.env.EMAIL_USER} process.env.EMAIL_APPLICATION_PASSWORD is ${process.env.EMAIL_APPLICATION_PASSWORD}`);
+/** Sonde de supervision du service de notification. */
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 // Route pour envoyer un email
 app.post('/notify', async (req, res) => {
   const { to, subject, text } = req.body;
-  console.log(`to is ${to} subject is ${subject} text is ${text}`)
-
-  //const { message } = req.body;
-    //console.log(`Notification: ${text}`);
-    //res.send('Notification envoyée mail');
+  logger.info('Demande de notification', { to, subject });
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -36,16 +35,16 @@ app.post('/notify', async (req, res) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('Email envoyé avec succès');
+    logger.info('Email envoyé avec succès', { to, subject });
     return res.status(200).json({ message: 'Email envoyé avec succès.' });
   } catch (error) {
-    console.error('Erreur lors de l\'envoi de l\'email', error);
-    return res.status(500).json({ message: 'Erreur lors de l\'envoi de l\'email.', error });
+    logger.error('Erreur lors de l\'envoi de l\'email', { error: error.message });
+    return res.status(500).json({ message: 'Erreur lors de l\'envoi de l\'email.' });
   }
 });
 
 // Lancer le service Notification
 const PORT = process.env.NOTIFI_PORT || 4002;
 app.listen(PORT, () => {
-  console.log(`Service de notification en écoute sur le port ${PORT}`);
+  logger.info(`Service de notification en écoute sur le port ${PORT}`);
 });

@@ -1,0 +1,84 @@
+# Stack applicative déployée sur le serveur (une instance par environnement).
+#   cd /opt/exam/preprod && docker compose -p exam-preprod -f docker-compose.app.yml up -d
+#   cd /opt/exam/prod    && docker compose -p exam-prod    -f docker-compose.app.yml up -d
+# Variables lues depuis le fichier .env du dossier (voir deploy/env.example) :
+#   APP_ENV (preprod|prod), IMAGE_TAG, MONGO_URI (Atlas), JWT_SECRET, CORS_ORIGIN, EMAIL_*, ORDER_NOTIFY_EMAIL
+#
+# Seuls frontend et backend rejoignent le réseau "proxy" (Caddy).
+# Gateway et microservices restent sur le réseau interne : jamais exposés sur Internet.
+
+x-logging: &default-logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+x-node: &node-service
+  restart: unless-stopped
+  logging: *default-logging
+  mem_limit: 160m
+  networks: [internal]
+
+services:
+  backend:
+    <<: *node-service
+    image: ghcr.io/nubunduram/exam-backend:${IMAGE_TAG:?}
+    environment:
+      SERVICE_NAME: backend
+      APP_ENV: ${APP_ENV:?}
+      PORT: 5000
+      MONGO_URI: ${MONGO_URI:?}
+      JWT_SECRET: ${JWT_SECRET:?}
+      CORS_ORIGIN: ${CORS_ORIGIN:?}
+      NOTIFY_URL: http://gateway:8000/notify
+      ORDER_NOTIFY_EMAIL: ${ORDER_NOTIFY_EMAIL:-}
+      LOG_DIR: /app/logs
+    volumes:
+      - backend-logs:/app/logs
+    networks:
+      internal:
+      proxy:
+        aliases: ["${APP_ENV}-backend"]
+
+  gateway:
+    <<: *node-service
+    image: ghcr.io/nubunduram/exam-gateway:${IMAGE_TAG:?}
+    environment:
+      SERVICE_NAME: gateway
+      APP_ENV: ${APP_ENV}
+      GATEWAY_PORT: 8000
+      NOTIFI_SERVICE_URL: http://notifications:4002
+      STOCK_SERVICE_URL: http://stock-management:4003
+
+  notifications:
+    <<: *node-service
+    image: ghcr.io/nubunduram/exam-notifications:${IMAGE_TAG:?}
+    environment:
+      SERVICE_NAME: notifications
+      APP_ENV: ${APP_ENV}
+      NOTIFI_PORT: 4002
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_APPLICATION_PASSWORD: ${EMAIL_APPLICATION_PASSWORD:-}
+
+  stock-management:
+    <<: *node-service
+    image: ghcr.io/nubunduram/exam-stock-management:${IMAGE_TAG:?}
+    environment:
+      SERVICE_NAME: stock-management
+      APP_ENV: ${APP_ENV}
+      STOCK_PORT: 4003
+
+  frontend:
+    image: ghcr.io/nubunduram/exam-frontend:${IMAGE_TAG:?}
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 48m
+    networks:
+      proxy:
+        aliases: ["${APP_ENV}-frontend"]
+
+volumes:
+  backend-logs:
+
+networks:
+  internal:
+  proxy:
+    external: true

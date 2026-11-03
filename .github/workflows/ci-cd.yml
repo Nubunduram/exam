@@ -1,0 +1,151 @@
+# Pipeline CI/CD
+#   - Pull request / push : installation, tests, audit des dépendances
+#   - push sur "development" : build + push des images (tag preprod) puis déploiement en PRÉ-PRODUCTION
+#   - push sur "main"        : build + push des images (tag prod) puis déploiement en PRODUCTION
+#                              (l'environnement GitHub "production" peut exiger une approbation manuelle)
+name: CI/CD
+
+on:
+  push:
+    branches: [development, main]
+  pull_request:
+    branches: [development, main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/nubunduram/exam
+  DOMAIN: exam-domain-name.duckdns.org
+
+jobs:
+  # ---------------------------------------------------------------- CI
+  test:
+    name: Test & audit (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, gateway, microservices/notifications, microservices/stock-management, frontend]
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.service }}/package-lock.json
+      - name: Installation des dépendances
+        run: npm ci
+      - name: Vérification syntaxique (services Node)
+        if: matrix.service != 'frontend'
+        run: find . -name "*.js" -not -path "./node_modules/*" -print0 | xargs -0 -n1 node --check
+      - name: Tests unitaires
+        run: |
+          if [ "${{ matrix.service }}" = "frontend" ]; then
+            CI=true npm test -- --watchAll=false
+          else
+            npm test --if-present
+          fi
+      - name: Audit de sécurité des dépendances (bloquant sur "critical")
+        run: npm audit --omit=dev --audit-level=critical
+
+  # ---------------------------------------------------------------- BUILD & PUSH
+  build:
+    name: Build & push (${{ matrix.name }})
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - { name: backend, context: backend }
+          - { name: gateway, context: gateway }
+          - { name: notifications, context: microservices/notifications }
+          - { name: stock-management, context: microservices/stock-management }
+          - { name: frontend, context: frontend }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Détermination de l'environnement cible
+        id: target
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "tag=prod" >> "$GITHUB_OUTPUT"
+            echo "api_url=https://api.${DOMAIN}/api" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=preprod" >> "$GITHUB_OUTPUT"
+            echo "api_url=https://api.preprod.${DOMAIN}/api" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            REACT_APP_API_URL=${{ steps.target.outputs.api_url }}
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ steps.target.outputs.tag }}
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ steps.target.outputs.tag }}-${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.name }}-${{ steps.target.outputs.tag }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}-${{ steps.target.outputs.tag }}
+
+  # ---------------------------------------------------------------- DEPLOY
+  deploy:
+    name: Déploiement ${{ github.ref_name == 'main' && 'PRODUCTION' || 'PRÉ-PRODUCTION' }}
+    needs: build
+    # Activé une fois le serveur prêt : Settings > Secrets and variables > Actions > Variables > DEPLOY_ENABLED=true
+    if: github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'preprod' }}
+      url: ${{ github.ref_name == 'main' && format('https://{0}', env.DOMAIN) || format('https://preprod.{0}', env.DOMAIN) }}
+    permissions:
+      contents: read
+      packages: read
+    env:
+      APP_DIR: /opt/exam/${{ github.ref_name == 'main' && 'prod' || 'preprod' }}
+      PROJECT: exam-${{ github.ref_name == 'main' && 'prod' || 'preprod' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copie du fichier compose sur le serveur
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: deploy/docker-compose.app.yml
+          target: ${{ env.APP_DIR }}
+          strip_components: 1
+      - name: Pull des images et redémarrage de la stack
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: APP_DIR,PROJECT
+          script: |
+            set -e
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            cd "$APP_DIR"
+            docker compose -p "$PROJECT" -f docker-compose.app.yml pull
+            docker compose -p "$PROJECT" -f docker-compose.app.yml up -d --remove-orphans
+            docker logout ghcr.io
+            docker image prune -f
+      - name: Test de fumée (healthcheck HTTPS)
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then API_HEALTH="https://api.${DOMAIN}/api/health"; else API_HEALTH="https://api.preprod.${DOMAIN}/api/health"; fi
+          for i in $(seq 1 12); do
+            if curl -fsS "$API_HEALTH"; then echo; echo "Déploiement OK"; exit 0; fi
+            sleep 10
+          done
+          echo "Le healthcheck a échoué" && exit 1

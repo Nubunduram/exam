@@ -1,32 +1,96 @@
-version: '3'
+# Environnement LOCAL / développement : toute la stack + MongoDB conteneurisé.
+# Les variables (JWT_SECRET, EMAIL_*, ORDER_NOTIFY_EMAIL) sont lues depuis le fichier .env à la racine.
+#   docker compose up -d --build
+#   docker compose exec backend node seeder.js   # jeu de données produits
+name: exam-local
+
+x-logging: &default-logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
 services:
-  frontend:
-    build: ./frontend
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
     ports:
-      - '3000:3000'
-    depends_on:
-      - backend
+      - "127.0.0.1:27018:27017" # accessible uniquement depuis la machine locale (Compass)
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      retries: 5
+    networks: [internal]
+    logging: *default-logging
 
   backend:
     build: ./backend
-    ports:
-      - '5000:5000'
+    restart: unless-stopped
     environment:
-      - MONGO_URI=mongodb://mongo:27017/mydatabase
-    depends_on:
-      - mongo
-
-  mongo:
-    image: mongo
+      SERVICE_NAME: backend
+      APP_ENV: local
+      PORT: 5000
+      MONGO_URI: mongodb://mongo:27017/exam1Db
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans .env}
+      CORS_ORIGIN: http://localhost:${FRONTEND_HOST_PORT:-3000}
+      NOTIFY_URL: http://gateway:8000/notify
+      ORDER_NOTIFY_EMAIL: ${ORDER_NOTIFY_EMAIL:-}
+      LOG_DIR: /app/logs
+    volumes:
+      - backend-logs:/app/logs
     ports:
-      - '27018:27017'
+      - "${BACKEND_HOST_PORT:-5000}:5000"
+    depends_on:
+      mongo: { condition: service_healthy }
+    networks: [internal]
+    logging: *default-logging
+
+  gateway:
+    build: ./gateway
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: gateway
+      GATEWAY_PORT: 8000
+      NOTIFI_SERVICE_URL: http://notifications:4002
+      STOCK_SERVICE_URL: http://stock-management:4003
+    networks: [internal]
+    logging: *default-logging
 
   notifications:
     build: ./microservices/notifications
-    ports:
-      - '3001:3001'
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: notifications
+      NOTIFI_PORT: 4002
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_APPLICATION_PASSWORD: ${EMAIL_APPLICATION_PASSWORD:-}
+    networks: [internal]
+    logging: *default-logging
 
   stock-management:
     build: ./microservices/stock-management
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: stock-management
+      STOCK_PORT: 4003
+    networks: [internal]
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_API_URL: http://localhost:${BACKEND_HOST_PORT:-5000}/api
+    restart: unless-stopped
     ports:
-      - '3002:3002'
+      - "${FRONTEND_HOST_PORT:-3000}:8080"
+    depends_on: [backend]
+    networks: [internal]
+    logging: *default-logging
+
+volumes:
+  mongo-data:
+  backend-logs:
+
+networks:
+  internal:

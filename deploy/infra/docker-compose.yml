@@ -1,0 +1,59 @@
+# Services d'infrastructure partagés par la préprod et la prod :
+#   - Caddy       : reverse proxy + certificats Let's Encrypt
+#   - Uptime Kuma : supervision et alertes
+#   - Dozzle      : consultation des logs des conteneurs (protégé par mot de passe)
+#   docker network create proxy   # une seule fois
+#   cd /opt/exam/infra && docker compose up -d
+name: exam-infra
+
+x-logging: &default-logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+      LOGS_USER: ${LOGS_USER:?}
+      LOGS_PASSWORD_HASH: ${LOGS_PASSWORD_HASH:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [proxy]
+    logging: *default-logging
+    mem_limit: 64m
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    volumes:
+      - kuma-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro # surveillance de l'état des conteneurs
+    networks: [proxy]
+    logging: *default-logging
+    mem_limit: 200m
+
+  dozzle:
+    image: amir20/dozzle:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [proxy]
+    logging: *default-logging
+    mem_limit: 48m
+
+volumes:
+  caddy-data:
+  caddy-config:
+  kuma-data:
+
+networks:
+  proxy:
+    external: true

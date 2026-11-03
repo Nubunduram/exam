@@ -1,0 +1,52 @@
+# Reverse proxy + HTTPS automatique (certificats Let's Encrypt obtenus et renouvelés par Caddy)
+{
+	email {$ACME_EMAIL}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+# ---------- PRODUCTION ----------
+{$DOMAIN} {
+	import security_headers
+	reverse_proxy prod-frontend:8080
+}
+
+api.{$DOMAIN} {
+	import security_headers
+	reverse_proxy prod-backend:5000
+}
+
+# ---------- PRÉ-PRODUCTION ----------
+preprod.{$DOMAIN} {
+	import security_headers
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy preprod-frontend:8080
+}
+
+api.preprod.{$DOMAIN} {
+	import security_headers
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy preprod-backend:5000
+}
+
+# ---------- OUTILS D'EXPLOITATION ----------
+status.{$DOMAIN} {
+	import security_headers
+	reverse_proxy uptime-kuma:3001
+}
+
+logs.{$DOMAIN} {
+	import security_headers
+	basic_auth {
+		{$LOGS_USER} {$LOGS_PASSWORD_HASH}
+	}
+	reverse_proxy dozzle:8080
+}

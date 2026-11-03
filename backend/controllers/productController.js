@@ -1,5 +1,6 @@
 // controllers/productController.js
 const Product = require('../models/Product');
+const logger = require('../config/logger');
 
 exports.getProducts = async (req, res) => {
     const products = await Product.find();
@@ -24,10 +25,11 @@ exports.updateProductStock = async (req, res) => {
       product.updatedAt = Date.now();
   
       await product.save();
+      logger.audit('product.stock.updated', { productId, stock, by: req.user.userId });
   
       res.json({ message: "Stock mis à jour avec succès.", product });
     } catch (error) {
-      console.error("Erreur lors de la mise à jour du stock :", error);
+      logger.error('Erreur lors de la mise à jour du stock', { error: error.message });
       res.status(500).json({ message: "Erreur serveur." });
     }
   };

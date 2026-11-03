@@ -1,27 +1,30 @@
 // backend/middlewares/authMiddleware.js
 const jwt = require('jsonwebtoken');
+const logger = require('../config/logger');
 
 exports.authenticateToken = (req, res, next) => {
 
   const token = req.headers['authorization']?.split(' ')[1];
-  console.log(`token is ${token}`)
   if (!token) return res.sendStatus(401);
 
   try {
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
       if (err) {
-        console.error('Erreur de vérification du token upd');
-        return res.status(403).json({ error: true, message: 'Token invalide upd' });
+        logger.warn('Token JWT invalide', { ip: req.ip, path: req.originalUrl });
+        return res.status(403).json({ error: true, message: 'Token invalide' });
       }
       req.user = user;
       next();
     });
-  } catch (error) { 
+  } catch (error) {
     return res.status(403).json({ error: true, message: 'Token invalide' });
   }
 };
 
 exports.isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ message: 'Accès interdit' });
+  if (req.user.role !== 'admin') {
+    logger.audit('access.denied.admin', { userId: req.user.userId, path: req.originalUrl, ip: req.ip });
+    return res.status(403).json({ message: 'Accès interdit' });
+  }
   next();
 };
