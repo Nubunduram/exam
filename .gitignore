@@ -27,3 +27,5 @@ data/db/
 
 # Autre
 .DS_Store
+# Accès confidentiels pour l'évaluation (joints au rendu, jamais versionnés)
+ACCES-EVALUATEUR.md
