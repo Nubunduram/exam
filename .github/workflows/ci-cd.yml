@@ -106,6 +106,10 @@ jobs:
     # Activé une fois le serveur prêt : Settings > Secrets and variables > Actions > Variables > DEPLOY_ENABLED=true
     if: github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
+    # Un seul déploiement à la fois par environnement
+    concurrency:
+      group: deploy-${{ github.ref_name }}
+      cancel-in-progress: false
     environment:
       name: ${{ github.ref_name == 'main' && 'production' || 'preprod' }}
       url: ${{ github.ref_name == 'main' && format('https://{0}', env.DOMAIN) || format('https://preprod.{0}', env.DOMAIN) }}
