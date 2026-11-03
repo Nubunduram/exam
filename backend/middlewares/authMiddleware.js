@@ -16,7 +16,7 @@ const AUTH_COOKIE = 'token';
  * `Authorization: Bearer <token>` (clients API, tests).
  *
  * Réponses : 401 si aucun token, 401 si token invalide ou expiré.
- * @type {import('express').RequestHandler}
+ * @type {express.RequestHandler}
  */
 exports.authenticateToken = (req, res, next) => {
   const header = req.headers.authorization;
@@ -39,7 +39,7 @@ exports.authenticateToken = (req, res, next) => {
 /**
  * Autorise uniquement les administrateurs. Doit être placé après `authenticateToken`.
  * Réponse : 403 si l'utilisateur n'a pas le rôle "admin" (tentative journalisée en audit).
- * @type {import('express').RequestHandler}
+ * @type {express.RequestHandler}
  */
 exports.isAdmin = (req, res, next) => {
   if (req.user?.role !== 'admin') {

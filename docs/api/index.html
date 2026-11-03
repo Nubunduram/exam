@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Home</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Home</h1>
+
+    
+
+
+
+    
+
+
+    <h3> </h3>
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    <section>
+        <article><h1>Mini e-commerce MERN</h1>
+<p>Boutique en ligne : catalogue, panier (Context API), commande avec choix du transporteur et du paiement, suivi des commandes, administration (commandes, stocks) et notifications email via microservice.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Production</th>
+<th>Pré-production</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Site</td>
+<td>https://exam-domain-name.duckdns.org</td>
+<td>https://preprod.exam-domain-name.duckdns.org</td>
+</tr>
+<tr>
+<td>API</td>
+<td>https://api.exam-domain-name.duckdns.org/api</td>
+<td>https://api.preprod.exam-domain-name.duckdns.org/api</td>
+</tr>
+<tr>
+<td>Supervision</td>
+<td>https://status.exam-domain-name.duckdns.org</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2>Architecture</h2>
+<table>
+<thead>
+<tr>
+<th>Dossier</th>
+<th>Rôle</th>
+<th>Port</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>frontend/</code></td>
+<td>React 18 + React Router + Tailwind, servi par nginx</td>
+<td>8080 (conteneur)</td>
+</tr>
+<tr>
+<td><code>backend/</code></td>
+<td>API REST Express + Mongoose (MongoDB)</td>
+<td>5000</td>
+</tr>
+<tr>
+<td><code>gateway/</code></td>
+<td>Point d'entrée des microservices (<code>/notify</code>, <code>/update-stock</code>)</td>
+<td>8000</td>
+</tr>
+<tr>
+<td><code>microservices/notifications/</code></td>
+<td>Envoi d'emails (Nodemailer)</td>
+<td>4002</td>
+</tr>
+<tr>
+<td><code>microservices/stock-management/</code></td>
+<td>Gestion de stock (événements)</td>
+<td>4003</td>
+</tr>
+<tr>
+<td><code>deploy/</code></td>
+<td>Fichiers de déploiement serveur (compose, Caddy, scripts)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2>Démarrage local (Docker)</h2>
+<pre class="prettyprint source lang-bash"><code>cp .env.example .env         # puis renseigner JWT_SECRET (et EMAIL_* pour les mails)
+docker compose up -d --build
+docker compose exec backend node seeder.js           # jeu de produits
+docker compose exec -e ADMIN_USERNAME=admin -e ADMIN_EMAIL=admin@local.test \
+  -e ADMIN_PASSWORD='MotDePasseFort123' backend node createAdmin.js
+</code></pre>
+<p>Frontend : http://localhost:3000, API : http://localhost:5000/api/health</p>
+<h2>API</h2>
+<table>
+<thead>
+<tr>
+<th>Méthode</th>
+<th>Route</th>
+<th>Accès</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/health</code></td>
+<td>public</td>
+<td>État de l'API et de MongoDB</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/products</code></td>
+<td>public</td>
+<td>Catalogue</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/products/:productId/stock</code></td>
+<td>admin</td>
+<td>Mise à jour du stock</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/register</code></td>
+<td>public (rate-limit)</td>
+<td>Inscription</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/login</code></td>
+<td>public (rate-limit)</td>
+<td>Connexion (cookie httpOnly)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/auth/me</code></td>
+<td>connecté</td>
+<td>Utilisateur courant</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/logout</code></td>
+<td>public</td>
+<td>Déconnexion</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/orders</code></td>
+<td>connecté</td>
+<td>Créer une commande (prix calculé serveur)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/orders/mine</code></td>
+<td>connecté</td>
+<td>Mes commandes</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/orders</code></td>
+<td>admin</td>
+<td>Toutes les commandes</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/orders/:id/validate</code></td>
+<td>admin</td>
+<td>Valider une commande</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/orders/:orderId/status</code></td>
+<td>admin</td>
+<td>Changer le statut</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/orders/:id</code></td>
+<td>admin</td>
+<td>Supprimer une commande</td>
+</tr>
+</tbody>
+</table>
+<h2>Qualité</h2>
+<pre class="prettyprint source lang-bash"><code>npm --prefix backend test                               # 25 tests API (sécurité, validation, accès)
+CI=true npm --prefix frontend test -- --watchAll=false  # 12 tests (panier, formulaires)
+npm --prefix backend run docs                           # documentation JSDoc -> docs/api/
+</code></pre>
+<h2>Documentation</h2>
+<ul>
+<li>Documentation du code backend (JSDoc) : <code>docs/api/index.html</code></li>
+<li>Journal des évolutions : <a href="CHANGELOG.md">CHANGELOG.md</a></li>
+<li>Rapport d'exploitation (hébergement, CI/CD, supervision) : <a href="RAPPORT.md">RAPPORT.md</a></li>
+</ul></article>
+    </section>
+
+
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-controllers_authController.html">controllers/authController</a></li><li><a href="module-controllers_orderController.html">controllers/orderController</a></li><li><a href="module-controllers_productController.html">controllers/productController</a></li><li><a href="module-logger.html">logger</a></li><li><a href="module-middlewares_authMiddleware.html">middlewares/authMiddleware</a></li><li><a href="module-server.html">server</a></li><li><a href="module-validators_schemas.html">validators/schemas</a></li></ul><h3>Global</h3><ul><li><a href="global.html#authLimiter">authLimiter</a></li><li><a href="global.html#connectDB">connectDB</a></li><li><a href="global.html#validate">validate</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Nov 03 2026 12:15:57 GMT+0100 (heure normale d’Europe centrale)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

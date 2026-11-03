@@ -1,4 +1,11 @@
 // gateway/server.js
+/**
+ * API Gateway : point d'entrée unique vers les microservices.
+ * Accessible uniquement sur le réseau Docker interne (non exposée sur Internet).
+ *   /notify       -> microservice notifications (NOTIFI_SERVICE_URL)
+ *   /update-stock -> microservice stock-management (STOCK_SERVICE_URL)
+ * @module gateway
+ */
 require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');

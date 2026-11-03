@@ -5,9 +5,9 @@
  * En cas de succès : la partie validée est remplacée par sa version nettoyée
  * (espaces supprimés, champs ignorés retirés, types convertis).
  *
- * @param {import('joi').ObjectSchema} schema - Schéma Joi à appliquer.
+ * @param {Joi.ObjectSchema} schema - Schéma Joi à appliquer.
  * @param {'body'|'params'|'query'} [source='body'] - Partie de la requête à valider.
- * @returns {import('express').RequestHandler}
+ * @returns {express.RequestHandler}
  * @example router.post('/login', validate(schemas.login), login);
  */
 const validate = (schema, source = 'body') => (req, res, next) => {

@@ -1,3 +1,8 @@
+// microservices/stock-management/index.js
+/**
+ * Microservice de gestion de stock : reçoit les événements de mouvement de stock.
+ * @module stock-management
+ */
 require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');

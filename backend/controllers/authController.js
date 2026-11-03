@@ -18,7 +18,7 @@ const SESSION_MS = 60 * 60 * 1000; // 1 heure
  * - httpOnly : illisible par le JavaScript du navigateur (protection XSS) ;
  * - secure : envoyé uniquement en HTTPS (désactivé seulement en local via COOKIE_SECURE=false) ;
  * - sameSite strict : non envoyé par un site tiers (protection CSRF).
- * @returns {import('express').CookieOptions}
+ * @returns {express.CookieOptions}
  */
 const cookieOptions = () => ({
   httpOnly: true,
