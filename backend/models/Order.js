@@ -1,5 +1,17 @@
 const mongoose = require('mongoose');
 
+/**
+ * Commande client.
+ * @typedef {Object} Order
+ * @property {ObjectId} userId - Auteur de la commande.
+ * @property {Array<{productId: ObjectId, quantity: number, price: number}>} items - Lignes (prix figé au moment de l'achat).
+ * @property {number} total - Montant total calculé côté serveur.
+ * @property {string} status - En attente | En cours de traitement | Expédiée | Délivrée | Annulée.
+ * @property {{street: string, city: string, postalCode: string, country: string}} shippingAddress
+ * @property {'Carte bancaire'|'PayPal'|'Virement'} paymentMethod
+ * @property {'colissimo'|'chronopost'} shippingMethod
+ */
+
 // Define the schema for individual order items
 const orderItemSchema = new mongoose.Schema({
   productId: {
@@ -15,6 +27,7 @@ const orderItemSchema = new mongoose.Schema({
   price: {
     type: Number,
     required: true,
+    min: 0,
   },
 });
 
@@ -51,14 +64,6 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ['colissimo', 'chronopost'],
       required: true,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
     },
   },
   {

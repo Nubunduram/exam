@@ -43,3 +43,56 @@ describe('cartReducer', () => {
     expect(s.paymentMethod).toBe('PayPal');
   });
 });
+
+// --- Tests de non-régression des bugs corrigés (E27) ---
+import { validateRegister } from './pages/Register';
+import { getCheckoutErrors } from './utils/checkout';
+
+describe('Correctifs E27', () => {
+  test("ADD_TO_CART ne modifie pas l'état précédent (immutabilité)", () => {
+    const s1 = cartReducer(initialState, { type: 'ADD_TO_CART', payload: product });
+    const snapshot = JSON.stringify(s1);
+    cartReducer(s1, { type: 'ADD_TO_CART', payload: { id: 'p1', quantity: 1 } });
+    expect(JSON.stringify(s1)).toBe(snapshot);
+  });
+
+  test("SET_SHIPPING_ADDRESS fusionne l'adresse au lieu de l'écraser", () => {
+    let s = cartReducer(initialState, { type: 'SET_SHIPPING_ADDRESS', payload: { street: '1 rue' } });
+    s = cartReducer(s, { type: 'SET_SHIPPING_ADDRESS', payload: { city: 'Paris' } });
+    expect(s.shippingAddress).toEqual({ street: '1 rue', city: 'Paris', postalCode: '', country: '' });
+  });
+
+  test("formulaire d'inscription vide refusé", () => {
+    expect(validateRegister({ username: '', email: '', password: '' })).toMatch(/obligatoires/);
+  });
+
+  test('inscription : mot de passe faible refusé, valide accepté', () => {
+    expect(validateRegister({ username: 'bob', email: 'b@b.fr', password: 'abc' })).not.toBe('');
+    expect(validateRegister({ username: 'bob', email: 'b@b.fr', password: 'Password1' })).toBe('');
+  });
+
+  test("inscription : nom d'utilisateur avec balise HTML refusé", () => {
+    expect(validateRegister({ username: "<script>alert('test')</script>", email: 'b@b.fr', password: 'Password1' })).not.toBe('');
+  });
+
+  test('commande : informations manquantes listées précisément', () => {
+    const errors = getCheckoutErrors({ ...initialState, cart: [product] });
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/rue/),
+        expect.stringMatching(/livraison/),
+        expect.stringMatching(/paiement/),
+      ])
+    );
+  });
+
+  test('commande complète : aucune erreur', () => {
+    const errors = getCheckoutErrors({
+      cart: [product],
+      shippingAddress: { street: '1 rue', city: 'Paris', postalCode: '75001', country: 'France' },
+      shippingMethod: 'colissimo',
+      paymentMethod: 'PayPal',
+    });
+    expect(errors).toEqual([]);
+  });
+});

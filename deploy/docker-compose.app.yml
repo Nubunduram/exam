@@ -2,7 +2,7 @@
 #   cd /opt/exam/preprod && docker compose -p exam-preprod -f docker-compose.app.yml up -d
 #   cd /opt/exam/prod    && docker compose -p exam-prod    -f docker-compose.app.yml up -d
 # Variables lues depuis le fichier .env du dossier (voir deploy/env.example) :
-#   APP_ENV (preprod|prod), IMAGE_TAG, MONGO_URI (Atlas), JWT_SECRET, CORS_ORIGIN, EMAIL_*, ORDER_NOTIFY_EMAIL
+#   APP_ENV (preprod|prod), IMAGE_TAG, MONGO_URI (Atlas), JWT_SECRET, NOTIFY_API_KEY, CORS_ORIGIN, EMAIL_*, ORDER_NOTIFY_EMAIL
 #
 # Seuls frontend et backend rejoignent le réseau "proxy" (Caddy).
 # Gateway et microservices restent sur le réseau interne : jamais exposés sur Internet.
@@ -29,6 +29,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?}
       CORS_ORIGIN: ${CORS_ORIGIN:?}
       NOTIFY_URL: http://gateway:8000/notify
+      NOTIFY_API_KEY: ${NOTIFY_API_KEY:?}
       ORDER_NOTIFY_EMAIL: ${ORDER_NOTIFY_EMAIL:-}
       LOG_DIR: /app/logs
     volumes:
@@ -55,6 +56,7 @@ services:
       SERVICE_NAME: notifications
       APP_ENV: ${APP_ENV}
       NOTIFI_PORT: 4002
+      NOTIFY_API_KEY: ${NOTIFY_API_KEY:?}
       EMAIL_USER: ${EMAIL_USER:-}
       EMAIL_APPLICATION_PASSWORD: ${EMAIL_APPLICATION_PASSWORD:-}
 

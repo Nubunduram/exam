@@ -34,6 +34,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans .env}
       CORS_ORIGIN: http://localhost:${FRONTEND_HOST_PORT:-3000}
       NOTIFY_URL: http://gateway:8000/notify
+      NOTIFY_API_KEY: ${NOTIFY_API_KEY:-local-dev-notify-key}
+      COOKIE_SECURE: "false" # HTTP en local uniquement
       ORDER_NOTIFY_EMAIL: ${ORDER_NOTIFY_EMAIL:-}
       LOG_DIR: /app/logs
     volumes:
@@ -62,6 +64,7 @@ services:
     environment:
       SERVICE_NAME: notifications
       NOTIFI_PORT: 4002
+      NOTIFY_API_KEY: ${NOTIFY_API_KEY:-local-dev-notify-key}
       EMAIL_USER: ${EMAIL_USER:-}
       EMAIL_APPLICATION_PASSWORD: ${EMAIL_APPLICATION_PASSWORD:-}
     networks: [internal]

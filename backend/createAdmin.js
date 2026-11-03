@@ -28,7 +28,7 @@ const { ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD, MONGO_URI } = process.env;
   }
   try {
     await mongoose.connect(MONGO_URI);
-    let user = await User.findOne({ $or: [{ username: ADMIN_USERNAME }, { email: ADMIN_EMAIL }] });
+    let user = await User.findOne(mongoose.trusted({ $or: [{ username: ADMIN_USERNAME }, { email: ADMIN_EMAIL }] }));
     if (user) {
       user.role = 'admin';
       user.password = ADMIN_PASSWORD; // re-hashé par le hook pre('save')

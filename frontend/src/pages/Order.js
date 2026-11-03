@@ -1,86 +1,86 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { useCart } from "../context/CartContext";
-import { createOrder } from "../services/api";
+// src/pages/Order.js
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
+import { createOrder } from '../services/api';
+import Alert from '../components/Alert';
+import { getCheckoutErrors } from '../utils/checkout';
 
+/**
+ * Synthèse de la commande avant validation.
+ * - Vérifie que toutes les informations sont présentes (sinon liste des erreurs).
+ * - N'envoie au serveur que les identifiants et quantités : le prix est recalculé côté serveur.
+ * - Affiche le message du serveur (succès, stock insuffisant, session expirée…).
+ * - Bouton désactivé pendant l'envoi pour éviter les commandes en double.
+ */
 const Order = () => {
   const navigate = useNavigate();
-  //recuperer le context panier
-  const { cart, shippingAddress, paymentMethod, shippingMethod, dispatch } =
-    useCart(); // Récupérer le contenu du panier à partir du contexte
-  // Naviguer vers la page de commande
-  const handleShippingPage = () => {
-    navigate("/shippig_payment");
-  };
+  const cartState = useCart();
+  const { cart, shippingAddress, paymentMethod, shippingMethod, dispatch } = cartState;
+  const [errors, setErrors] = useState([]);
+  const [success, setSuccess] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-    // Vérifier les champs manquants
-    const missingFields = [];
-    if (cart.length === 0) missingFields.push("panier");
-    if (!shippingAddress) missingFields.push("adresse de livraison");
-    if (!shippingMethod) missingFields.push("méthode de livraison");
-    if (!paymentMethod) missingFields.push("méthode de paiement");
+  const handleSubmit = async () => {
+    const found = getCheckoutErrors(cartState);
+    setErrors(found);
+    if (found.length > 0) return;
 
-    if (missingFields.length > 0) {
-      alert(
-        `Informations manquantes pour la commande :\n${missingFields
-          .map((field) => `• ${field}`)
-          .join("\n")}`
-      );
-      return;
-    }
-
-    // Vérifier le détail de l'adresse de livraison
-    const requiredAddressFields = ["street", "postalCode", "city", "country"];
-    const missingAddressDetails = requiredAddressFields.filter(
-      (field) => !shippingAddress[field]
-    );
-
-    if (missingAddressDetails.length > 0) {
-      alert(
-        `Adresse de livraison incomplète :\n${missingAddressDetails
-          .map((field) => `• ${field}`)
-          .join("\n")}`
-      );
-      return;
-    }
-
+    setSubmitting(true);
     try {
-      // Créer la commande seulement si toutes les vérifications passent
-      const orderDetails = {
-        items: cart.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        total: cart.reduce((acc, item) => acc + item.price * item.quantity, 0),
+      const response = await createOrder({
+        items: cart.map((item) => ({ productId: item.id, quantity: item.quantity })),
         shippingAddress,
         paymentMethod,
         shippingMethod,
-      };
-
-      const response = await createOrder(orderDetails);
-
-      if (response.error) {
-        alert(`Erreur : ${response.message || "Échec de la commande"}`);
+      });
+      dispatch({ type: 'CLEAR_CART' });
+      setSuccess(`${response.data.message} Montant total : ${response.data.order.total.toFixed(2)} €.`);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        navigate('/login', { state: { from: '/order' } });
         return;
       }
-
-      dispatch({ type: "CLEAR_CART" });
-      alert("Commande confirmée avec succès !");
-    } catch (error) {
-      console.error("Erreur lors de la commande", error);
-      alert("Une erreur technique est survenue. Veuillez réessayer.");
+      setErrors([error.userMessage]);
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="p-8">
+        <h2 className="text-2xl font-bold mb-4">Synthèse de la commande</h2>
+        <Alert type="success">{success}</Alert>
+        <p>Un email de confirmation vous a été envoyé.</p>
+        <Link to="/" className="text-blue-600 underline">
+          Continuer mes achats
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
       <h2 className="text-2xl font-bold mb-4">Synthèse de la commande</h2>
+      {errors.length > 0 && (
+        <Alert type="error">
+          <ul className="list-disc ml-4">
+            {errors.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        </Alert>
+      )}
       {cart.length === 0 ? (
-        <p className="text-gray-600">Votre panier est vide.</p>
+        <p className="text-gray-600">
+          Votre panier est vide.{' '}
+          <Link to="/" className="text-blue-600 underline">
+            Voir les produits
+          </Link>
+        </p>
       ) : (
         <div>
           <table className="w-full border-collapse border border-gray-300">
@@ -88,9 +88,7 @@ const Order = () => {
               <tr>
                 <th className="border border-gray-300 p-2">Produit(s)</th>
                 <th className="border border-gray-300 p-2">Quantité(s)</th>
-                <th className="border border-gray-300 p-2">
-                  Prix Unitaire (€)
-                </th>
+                <th className="border border-gray-300 p-2">Prix Unitaire (€)</th>
                 <th className="border border-gray-300 p-2">Prix Total (€)</th>
               </tr>
             </thead>
@@ -98,97 +96,44 @@ const Order = () => {
               {cart.map((item) => (
                 <tr key={item.id}>
                   <td className="border border-gray-300 p-2">{item.name}</td>
-                  <td className="border border-gray-300 p-2 text-center">
-                    {item.quantity}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-center">
-                    {item.price.toFixed(2)}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-center">
-                    {(item.price * item.quantity).toFixed(2)}
-                  </td>
+                  <td className="border border-gray-300 p-2 text-center">{item.quantity}</td>
+                  <td className="border border-gray-300 p-2 text-center">{Number(item.price).toFixed(2)}</td>
+                  <td className="border border-gray-300 p-2 text-center">{(item.price * item.quantity).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="text-right font-bold text-lg mt-4">
-            Total :{" "}
-            {cart
-              .reduce((acc, item) => acc + item.price * item.quantity, 0)
-              .toFixed(2)}{" "}
-            €
-          </p>
+          <p className="text-right font-bold text-lg mt-4">Total : {total.toFixed(2)} €</p>
 
-          {/* Nouvelles informations ajoutées ici */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">
-                Adresse de livraison
-              </h3>
-              {shippingAddress ? (
-                <>
-                  <div className="bg-gray-50 p-4 rounded">
-                    <p>{shippingAddress.street}</p>
-                    <p>
-                      {shippingAddress.postalCode} {shippingAddress.city}
-                    </p>
-                    <p>{shippingAddress.country}</p>
-                  </div>
-                  <div>
-                    <div>
-                      <button
-                        onClick={handleShippingPage}
-                        className="bg-blue-500 text-white px-4 py-2 rounded"
-                      >
-                        Modifier
-                      </button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <p className="text-gray-500">
-                  Aucune adresse de livraison fournie.
+              <h3 className="text-lg font-semibold mb-2">Adresse de livraison</h3>
+              <div className="bg-gray-50 p-4 rounded">
+                <p>{shippingAddress.street || '—'}</p>
+                <p>
+                  {shippingAddress.postalCode} {shippingAddress.city}
                 </p>
-              )}
+                <p>{shippingAddress.country}</p>
+              </div>
             </div>
-
             <div>
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold mb-2">
-                  Méthode de livraison
-                </h3>
-                <div className="bg-gray-50 p-4 rounded">
-                  {shippingMethod || "Non spécifiée"}
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold mb-2">
-                  Méthode de paiement
-                </h3>
-                <div className="bg-gray-50 p-4 rounded">
-                  {paymentMethod || "Non spécifiée"}
-                </div>
-              </div>
-              <div>
-                    <div>
-                      <button
-                        onClick={handleShippingPage}
-                        className="bg-blue-500 text-white px-4 py-2 rounded"
-                      >
-                        Modifier
-                      </button>
-                    </div>
-                  </div>
+              <h3 className="text-lg font-semibold mb-2">Méthode de livraison</h3>
+              <div className="bg-gray-50 p-4 rounded mb-4">{shippingMethod || 'Non spécifiée'}</div>
+              <h3 className="text-lg font-semibold mb-2">Méthode de paiement</h3>
+              <div className="bg-gray-50 p-4 rounded">{paymentMethod || 'Non spécifiée'}</div>
             </div>
           </div>
 
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-between mt-4">
+            <button onClick={() => navigate('/shipping-payment')} className="bg-gray-400 text-white px-4 py-2 rounded">
+              Modifier livraison / paiement
+            </button>
             <button
               onClick={handleSubmit}
-              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
+              disabled={submitting}
+              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
             >
-              Confirmer la commande
+              {submitting ? 'Validation…' : 'Confirmer la commande'}
             </button>
           </div>
         </div>

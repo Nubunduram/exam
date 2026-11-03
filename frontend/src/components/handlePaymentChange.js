@@ -1,27 +1,30 @@
+// src/components/handlePaymentChange.js
+import React from 'react';
 import { useCart } from '../context/CartContext';
 
+/** Modes de paiement disponibles (valeurs acceptées par l'API). */
+export const PAYMENT_OPTIONS = ['Carte bancaire', 'PayPal', 'Virement'];
+
+/**
+ * Choix du mode de paiement, avec une option vide tant qu'aucun choix n'est fait
+ * (même correctif que pour le transporteur).
+ */
 const PaymentMethodSelection = () => {
   const { paymentMethod, dispatch } = useCart();
-  const paymentOptions = [
-    'Carte bancaire',
-    'PayPal',
-    'Virement',
-  ];
-
-  const handlePaymentChange = (event) => {
-    dispatch({ type: 'SET_PAYMENT_METHOD', payload: event.target.value });
-  };
 
   return (
     <div className="border p-4 rounded-md">
       <label htmlFor="payment" className="block text-sm font-medium text-gray-700">
-      Mode de paiement:
+        Mode de paiement *
       </label>
-      <select id="payment" value={paymentMethod} 
-      onChange={handlePaymentChange}
-      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+      <select
+        id="payment"
+        value={paymentMethod || ''}
+        onChange={(e) => dispatch({ type: 'SET_PAYMENT_METHOD', payload: e.target.value })}
+        className="mt-1 block w-full rounded-md border border-gray-300 p-1"
       >
-        {paymentOptions.map((option) => (
+        <option value="">-- Choisir un mode de paiement --</option>
+        {PAYMENT_OPTIONS.map((option) => (
           <option key={option} value={option}>
             {option}
           </option>

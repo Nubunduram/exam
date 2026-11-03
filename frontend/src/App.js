@@ -12,7 +12,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import ShippingPayment from './pages/ShippingPayment';
 
-// Layout principal avec Navbar et Outlet
+/** Mise en page commune : barre de navigation + contenu de la route courante. */
 const MainLayout = () => (
   <>
     <Navbar />
@@ -22,40 +22,24 @@ const MainLayout = () => (
   </>
 );
 
-// Définition des routes avec le MainLayout
+/** Page affichée pour une URL inconnue. */
+const NotFound = () => <p className="p-8">Page introuvable.</p>;
+
+// Définition des routes. Les étapes de commande et l'administration sont protégées.
 const router = createBrowserRouter([
   {
     path: '/',
     element: <MainLayout />,
+    errorElement: <NotFound />,
     children: [
-      {
-        path: '',
-        element: <ProductList />,
-      },
-      {
-        path: 'login',
-        element: <Login />,
-      },
-      {
-        path: 'register',
-        element: <Register />,
-      },
-      {
-        path: 'shippig_payment',
-        element: <ShippingPayment />,
-      },
-      {
-        path: 'cart',
-        element: <Cart />,
-      },
-      {
-        path: 'order',
-        element: <ProtectedRoute><Order /></ProtectedRoute>,
-      },
-      {
-        path: 'admin',
-        element: <AdminRoute><Admin /></AdminRoute>,
-      },
+      { index: true, element: <ProductList /> },
+      { path: 'login', element: <Login /> },
+      { path: 'register', element: <Register /> },
+      { path: 'cart', element: <Cart /> },
+      { path: 'shipping-payment', element: <ProtectedRoute><ShippingPayment /></ProtectedRoute> },
+      { path: 'order', element: <ProtectedRoute><Order /></ProtectedRoute> },
+      { path: 'admin', element: <AdminRoute><Admin /></AdminRoute> },
+      { path: '*', element: <NotFound /> },
     ],
   },
 ]);

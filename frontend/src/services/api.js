@@ -1,17 +1,22 @@
 // src/services/api.js
-import axios from 'axios';
+import http from './http';
 
-import { API_BASE_URL } from '../config';
+/** Liste publique des produits. */
+export const fetchProducts = () => http.get('/products');
 
-export const fetchProducts = () => axios.get(`${API_BASE_URL}/products`);
+/**
+ * Crée une commande pour l'utilisateur connecté.
+ * Seuls l'identifiant et la quantité des produits sont envoyés :
+ * le prix est recalculé par le serveur.
+ * @param {{items: Array<{productId: string, quantity: number}>, shippingAddress: object, paymentMethod: string, shippingMethod: string}} orderData
+ */
+export const createOrder = (orderData) => http.post('/orders', orderData);
 
-export const createOrder = (orderData) => {
-    console.log(`appel fonction createOrder avec orderData ${JSON.stringify(orderData)}`)
-    const token = localStorage.getItem('token'); // Token de connexion
-    console.log(`token is ${token}`)
-    return axios.post(`${API_BASE_URL}/orders`, orderData, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-};
+/** Commandes de l'utilisateur connecté. */
+export const fetchMyOrders = () => http.get('/orders/mine');
+
+/** Authentification (le serveur dépose / supprime le cookie de session). */
+export const login = (credentials) => http.post('/auth/login', credentials);
+export const register = (data) => http.post('/auth/register', data);
+export const logout = () => http.post('/auth/logout');
+export const fetchCurrentUser = () => http.get('/auth/me');
