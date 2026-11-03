@@ -112,12 +112,12 @@ Flux : `git push development` → préproduction ; fusion dans `main` → produc
 
 ### Étape 7 : supervision et alertes (E26)
 - **Uptime Kuma v2** (la v1, d'abord déployée, a été remplacée car elle n'est plus maintenue), accessible sur https://status.exam-domain-name.duckdns.org :
-  - sondes **mot-clé** sur  () pour la **prod** et la **préprod** : elles détectent à la fois une panne de l'API **et** une perte de connexion à MongoDB Atlas ;
+  - sondes **mot-clé** sur `/api/health` (`"database":"up"`) pour la **prod** et la **préprod** : elles détectent à la fois une panne de l'API **et** une perte de connexion à MongoDB Atlas ;
   - sondes **HTTP(s)** sur les frontends de prod et de préprod ;
   - intervalle de 60 s, alerte après 3 échecs consécutifs (pas de faux positifs) ;
   - **alerte d'expiration des certificats TLS** à 21, 14 et 7 jours ;
   - notification par **email** (SMTP Gmail, port 465 SSL/TLS), testée et reçue.
-- **Healthchecks Docker** sur chaque conteneur, avec redémarrage automatique () : les microservices internes (gateway, notifications, stock) sont relancés en cas de défaillance.
+- **Healthchecks Docker** sur chaque conteneur, avec redémarrage automatique (`restart: unless-stopped`) : les microservices internes (gateway, notifications, stock) sont relancés en cas de défaillance.
 - **Google Cloud Ops Agent** (préinstallé) : métriques système (CPU, RAM, disque) dans Cloud Monitoring.
 
 ---
@@ -166,7 +166,7 @@ Push sur `development` → préproduction. Fusion dans `main` → production. En
 
 ### E26 : supervision et alertes
 J'ai déployé **Uptime Kuma v2** (https://status.exam-domain-name.duckdns.org) pour superviser les **deux environnements** :
-- une sonde par mot-clé sur  en prod et en préprod. L'API renvoie  uniquement si MongoDB Atlas répond, donc la sonde détecte à la fois une panne de l'API et une panne de la base ;
+- une sonde par mot-clé sur `/api/health` en prod et en préprod. L'API renvoie `"database":"up"` uniquement si MongoDB Atlas répond, donc la sonde détecte à la fois une panne de l'API et une panne de la base ;
 - une sonde HTTP(s) sur chaque frontend.
 
 Configuration des alertes :
