@@ -111,16 +111,13 @@ Flux : `git push development` → préproduction ; fusion dans `main` → produc
 | frontend (runtime) | 74 (4 critiques) | 1 modérée (react-router 6, corrigée uniquement en v7) |
 
 ### Étape 7 : supervision et alertes (E26)
-- **Uptime Kuma v2**. La v1, d'abord déployée, a été remplacée car elle n'est plus maintenue.
-  - Sondes *mot-clé* sur `/api/health` (`"database":"up"`) pour la prod et la préprod : elles détectent à la fois une panne de l'API **et** une perte de connexion à MongoDB Atlas.
-  - Sondes HTTP sur les frontends.
-  - Sonde métier sur le catalogue produits.
-  - Sondes **conteneurs Docker** pour la gateway et les microservices, qui ne sont pas exposés sur Internet.
-  - Alerte d'**expiration des certificats** à 21, 14 et 7 jours.
-  - 3 tentatives avant alerte, pour éviter les faux positifs.
-  - Notification par email ou ntfy.
-  - Page de statut publique.
-- **Healthchecks Docker** sur chaque conteneur, avec redémarrage automatique (`restart: unless-stopped`).
+- **Uptime Kuma v2** (la v1, d'abord déployée, a été remplacée car elle n'est plus maintenue), accessible sur https://status.exam-domain-name.duckdns.org :
+  - sondes **mot-clé** sur  () pour la **prod** et la **préprod** : elles détectent à la fois une panne de l'API **et** une perte de connexion à MongoDB Atlas ;
+  - sondes **HTTP(s)** sur les frontends de prod et de préprod ;
+  - intervalle de 60 s, alerte après 3 échecs consécutifs (pas de faux positifs) ;
+  - **alerte d'expiration des certificats TLS** à 21, 14 et 7 jours ;
+  - notification par **email** (SMTP Gmail, port 465 SSL/TLS), testée et reçue.
+- **Healthchecks Docker** sur chaque conteneur, avec redémarrage automatique () : les microservices internes (gateway, notifications, stock) sont relancés en cas de défaillance.
 - **Google Cloud Ops Agent** (préinstallé) : métriques système (CPU, RAM, disque) dans Cloud Monitoring.
 
 ---
@@ -168,14 +165,18 @@ Push sur `development` → préproduction. Fusion dans `main` → production. En
 **Winston** + **morgan** dans tous les services Node : logs JSON structurés, niveaux, fichiers avec rotation et journal d'**audit** séparé (connexions réussies et échouées, inscriptions, commandes, actions admin, accès refusés). J'ai supprimé les logs qui exposaient des secrets (mots de passe, JWT, mot de passe SMTP, URI Mongo). Les logs Docker sont en rotation, et **Dozzle** permet de les consulter, protégé par mot de passe. Côté audit des dépendances, `npm audit` tourne dans le CI : on passe de 100 failles (dont 10 critiques) à 1 modérée. Les images d'infrastructure ont des versions maintenues et fixées.
 
 ### E26 : supervision et alertes
-**Uptime Kuma v2** surveille les deux environnements :
-- `/api/health` par mot-clé (API **et** base de données) ;
-- les frontends ;
-- un parcours métier (catalogue) ;
-- les conteneurs internes (gateway, notifications, stock) via le socket Docker ;
-- l'expiration des certificats.
+J'ai déployé **Uptime Kuma v2** (https://status.exam-domain-name.duckdns.org) pour superviser les **deux environnements** :
+- une sonde par mot-clé sur  en prod et en préprod. L'API renvoie  uniquement si MongoDB Atlas répond, donc la sonde détecte à la fois une panne de l'API et une panne de la base ;
+- une sonde HTTP(s) sur chaque frontend.
 
-Les alertes partent par email ou ntfy après 3 échecs consécutifs, ce qui limite les faux positifs. Une page de statut publique est disponible. Les healthchecks Docker redémarrent automatiquement les services défaillants. Le Google Cloud Ops Agent remonte les métriques système (CPU, RAM, disque).
+Configuration des alertes :
+- vérification toutes les 60 s, alerte après 3 échecs consécutifs pour éviter les faux positifs ;
+- notification par **email** (SMTP Gmail en SSL/TLS), testée et reçue ;
+- alerte d'**expiration des certificats** Let's Encrypt à 21, 14 et 7 jours.
+
+En complément :
+- les **healthchecks Docker** redémarrent automatiquement un service défaillant, y compris la gateway et les microservices internes ;
+- le **Google Cloud Ops Agent** remonte les métriques système (CPU, RAM, disque) de la VM.
 
 ---
 
