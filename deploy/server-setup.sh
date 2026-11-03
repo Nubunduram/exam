@@ -9,16 +9,7 @@ set -euo pipefail
 DEPLOY_USER=deploy
 APP_ROOT=/opt/exam
 
-echo "==> 1. Mises à jour système"
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -y
-apt-get upgrade -y
-apt-get install -y ca-certificates curl gnupg ufw fail2ban unattended-upgrades apache2-utils
-
-echo "==> 2. Mises à jour de sécurité automatiques"
-dpkg-reconfigure -f noninteractive unattended-upgrades
-
-echo "==> 3. Swap de 2 Go (la VM n'a que 1 Go de RAM)"
+echo "==> 0. Swap de 2 Go AVANT les mises à jour (la VM n'a que 1 Go de RAM)"
 if ! swapon --show | grep -q /swapfile; then
   fallocate -l 2G /swapfile
   chmod 600 /swapfile
@@ -28,6 +19,15 @@ if ! swapon --show | grep -q /swapfile; then
   sysctl -w vm.swappiness=10
   echo 'vm.swappiness=10' > /etc/sysctl.d/99-swappiness.conf
 fi
+
+echo "==> 1. Mises à jour système"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get upgrade -y
+apt-get install -y ca-certificates curl gnupg ufw fail2ban unattended-upgrades apache2-utils
+
+echo "==> 2. Mises à jour de sécurité automatiques"
+dpkg-reconfigure -f noninteractive unattended-upgrades
 
 echo "==> 4. Installation de Docker Engine + plugin Compose (dépôt officiel)"
 if ! command -v docker >/dev/null; then
