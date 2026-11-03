@@ -19,6 +19,22 @@ env:
   DOMAIN: exam-domain-name.duckdns.org
 
 jobs:
+  # ---------------------------------------------------------------- QUALITÉ DU CODE
+  lint:
+    name: Lint (ESLint + Prettier)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: ESLint (backend, gateway, microservices)
+        run: npm run lint
+      - name: Prettier (formatage)
+        run: npm run format:check
+
   # ---------------------------------------------------------------- CI
   test:
     name: Test & audit (${{ matrix.service }})
@@ -55,7 +71,7 @@ jobs:
   # ---------------------------------------------------------------- BUILD & PUSH
   build:
     name: Build & push (${{ matrix.name }})
-    needs: test
+    needs: [lint, test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:

@@ -81,21 +81,23 @@ Les secrets sont créés par `deploy/init-env.sh` :
 
 ### Étape 5 : CI/CD (E24)
 Workflow `.github/workflows/ci-cd.yml` (GitHub Actions) :
-1. **Test & audit** (matrice des 5 services) : `npm ci`, vérification syntaxique, tests unitaires (reducer du panier, 5 tests), `npm audit --audit-level=critical` bloquant.
-2. **Build & push** : `docker buildx`, push sur **GitHub Container Registry**. Tags `preprod` ou `prod` + tag immuable `<env>-<sha>` pour pouvoir revenir en arrière. L'URL de l'API est injectée au build selon la branche, et un cache est utilisé entre les builds.
-3. **Déploiement** (environnements GitHub `preprod` et `production`) :
+1. **Lint** : ESLint (règles recommandées, `eqeqeq`, `no-var`…) sur les services Node et vérification du formatage Prettier.
+2. **Test & audit** (matrice des 5 services) : `npm ci`, vérification syntaxique, tests unitaires (reducer du panier, 5 tests), `npm audit --audit-level=critical` bloquant.
+3. **Build & push** : `docker buildx`, push sur **GitHub Container Registry**. Tags `preprod` ou `prod` + tag immuable `<env>-<sha>` pour pouvoir revenir en arrière. L'URL de l'API est injectée au build selon la branche, et un cache est utilisé entre les builds.
+4. **Déploiement** (environnements GitHub `preprod` et `production`) :
    - copie SCP des fichiers compose ;
    - démarrage ou rechargement de l'infrastructure ;
    - `docker compose pull` puis `up -d` via SSH avec l'utilisateur `deploy` ;
    - nettoyage des images ;
    - verrou de concurrence (un seul déploiement à la fois par environnement).
-4. **Test de fumée** : appel HTTPS de `/api/health` après le déploiement. Le pipeline échoue si l'API ne répond pas.
+5. **Test de fumée** : appel HTTPS de `/api/health` après le déploiement. Le pipeline échoue si l'API ne répond pas.
 
 Flux : `git push development` → préproduction ; fusion dans `main` → production.
 
 ### Étape 6 : journalisation et audit (E25)
 - **Winston** dans les 4 services Node : logs **JSON** horodatés avec le service et l'environnement, niveau `info` en production, sortie console (collectée par Docker) et fichiers `error.log`, `combined.log` avec rotation (5 × 5 Mo).
-- **morgan** : journal d'accès HTTP (format *combined*) redirigé vers Winston.
+- **morgan** : journal d'accès HTTP (format *combined*) redirigé vers Winston (niveau `http`, actif en production).
+- Le module `debug` (slide 33) est remplacé par le niveau `debug` de Winston : `LOG_LEVEL=debug` active les traces de développement sans modifier le code.
 - **Journal d'audit** dédié (`audit.log`) : connexions réussies et échouées (avec la raison et l'IP), inscriptions, créations de commande, changements de statut, mises à jour de stock, accès admin refusés.
 - **Suppression des fuites dans les logs** : mot de passe en clair (debug de `authController`), token JWT (middleware et frontend), URI MongoDB, **mot de passe SMTP** affiché au démarrage du service notifications.
 - Rotation des logs Docker (`max-size 10m`, `max-file 3`).
@@ -154,7 +156,7 @@ Les certificats **Let's Encrypt** sont obtenus et renouvelés automatiquement pa
 
 ### E24 : CI/CD
 Pipeline **GitHub Actions** :
-1. **CI** : installation, vérification syntaxique, tests unitaires, `npm audit` bloquant sur les failles critiques.
+1. **CI** : lint (ESLint + Prettier), installation, vérification syntaxique, tests unitaires (25 backend + 12 frontend), `npm audit` bloquant sur les failles critiques.
 2. **Build** des 5 images Docker et **push sur GHCR** (tags `preprod` ou `prod` + SHA du commit pour le retour arrière).
 3. **CD** via SSH (utilisateur `deploy`, clé dédiée) : `docker compose pull` puis `up -d`.
 4. **Test de fumée HTTPS** sur `/api/health`.
@@ -180,24 +182,56 @@ En complément :
 
 ---
 
-## Captures d'écran à joindre
-1. Console GCP : VM e2-micro (et règles de pare-feu)
-2. Sortie de `server-setup.sh` (UFW, Docker, swap)
-3. DuckDNS : domaine et IP
-4. MongoDB Atlas : cluster, utilisateurs, accès réseau
-5. GitHub Actions : pipeline vert préprod et prod
-6. GHCR : packages des images
-7. Navigateur : cadenas et certificat Let's Encrypt (prod et préprod)
-8. `/api/health` prod et préprod
-9. Uptime Kuma : tableau de bord et page de statut
-10. Dozzle : logs JSON et lignes d'audit
+## Session 2 : qualité du code, sécurité et documentation
 
-## Accès (transmis séparément, jamais versionnés)
-| Ressource | Identifiant | Secret |
-|---|---|---|
-| Admin application, production | `admin` | *fourni séparément* |
-| Admin application, préproduction | `admin` | *fourni séparément* |
-| Uptime Kuma | *à compléter* | *fourni séparément* |
-| Dozzle (logs) | `admin` | *fourni séparément* |
-| VM GCP (SSH) | via la console GCP | accès au projet à partager |
-| MongoDB Atlas | *invitation au projet* | |
+### Étape 8 : détection et correction des bugs (E27)
+**Méthode** : lecture complète du code, tests manuels de tous les parcours (inscription, connexion, panier, commande, administration, formulaires vides) en local avec Docker puis en préproduction, observation de la console du navigateur et des logs.
+
+19 bugs corrigés, détaillés dans [CHANGELOG.md](CHANGELOG.md) (section *Corrigé*). Les principaux :
+- Navbar non mise à jour après connexion/déconnexion → `AuthContext` partagé ;
+- livraison/paiement « manquants » alors qu'une valeur était affichée → option vide synchronisée avec l'état ;
+- `deleteOrder` sans réponse, `validateOrder` sans effet, routes admin jamais montées → corrigés / supprimés ;
+- stock jamais décrémenté → réservation atomique, message « Stock insuffisant » ;
+- formulaires vides et erreurs 500 génériques → validation client + serveur, messages précis dans la page (composant `Alert`) ;
+- état du panier muté, panier perdu au rafraîchissement, `key` React manquante, double soumission.
+
+**Non-régression** : 25 tests API (`node:test` + `supertest`) et 12 tests frontend, exécutés à chaque push par le CI.
+
+### Étape 9 : failles de sécurité (E28)
+16 failles identifiées et corrigées, avec risque et correction pour chacune dans [CHANGELOG.md](CHANGELOG.md) (section *Sécurité*). Les principales :
+- **prix envoyé par le client** → recalcul serveur (vérifié : 2 smartphones à 0,01 € facturés 1 400 €) ;
+- **injection NoSQL** et **absence de validation** → Joi sur toutes les routes + `sanitizeFilter` ;
+- **contrôle d'accès** des routes PUT/DELETE → `authenticateToken` + `isAdmin`, réponses 401/403 testées ;
+- **JWT en localStorage** → cookie `httpOnly`, `Secure`, `SameSite=Strict` ;
+- **injection HTML/JS** (`alert('test')`) → refusée par la validation, affichage échappé par React ;
+- **CORS ouvert** → liste blanche ; **helmet**, **rate-limit** sur l'authentification, message de connexion générique ;
+- **robustesse du `JWT_SECRET`** → 96 caractères aléatoires par environnement, démarrage refusé si < 32 ;
+- **`npm audit`** : 100 vulnérabilités (10 critiques) → 1 modérée ;
+- microservice de notification protégé (réseau interne + clé API), secrets retirés des logs.
+
+### Étape 10 : documentation et changelog (E29)
+- **JSDoc** sur tout le backend (modules, contrôleurs, middlewares, modèles, validateurs), générée en HTML dans [docs/api/](docs/api/index.html) avec `npm --prefix backend run docs`.
+- **Commentaires** dans tous les composants React (rôle du composant et correctif apporté).
+- **[CHANGELOG.md](CHANGELOG.md)** au format *Keep a Changelog* avec versionnage sémantique : 2.0.0 (sécurité et bugs), 1.1.0 (mise en production), 1.0.0 (version initiale).
+- **[README.md](README.md)** : architecture, démarrage, tableau des routes API et des droits d'accès.
+- **Qualité du code** (slide 31) : **ESLint** (`npm run lint`) et **Prettier** (`npm run format`) configurés à la racine et vérifiés dans le CI.
+
+---
+
+## Captures d'écran
+
+| Compétence | Capture |
+|---|---|
+| E21 : VM Google Cloud | ![E21](docs/screenshots/E21-gcp-vm.png) |
+| E22 : accès MongoDB Atlas limité à l'IP de la VM | ![E22](docs/screenshots/E22-atlas-securite.png) |
+| E23 : certificat Let's Encrypt de la production | ![E23](docs/screenshots/E23-certificat-https.png) |
+| E24 : pipeline CI/CD GitHub Actions | ![E24](docs/screenshots/E24-pipeline-github.png) |
+| E25 : logs JSON des conteneurs dans Dozzle | ![E25](docs/screenshots/E25-dozzle-logs.png) |
+| E26 : supervision Uptime Kuma (prod + préprod) | ![E26](docs/screenshots/E26-uptime-kuma.png) |
+| E27 : formulaire vide, message d'erreur | ![E27](docs/screenshots/E27-formulaire-vide.png) |
+| E28 : injection `<script>alert('test')</script>` refusée | ![E28](docs/screenshots/E28-xss-refuse.png) |
+| E28 : cookie de session HttpOnly / Secure / SameSite | ![E28](docs/screenshots/E28-cookie-httponly.png) |
+| E29 : documentation JSDoc générée | ![E29](docs/screenshots/E29-jsdoc.png) |
+
+## Accès
+Identifiants fournis séparément dans `ACCES-EVALUATEUR.md` (joint au rendu, jamais versionné dans Git).

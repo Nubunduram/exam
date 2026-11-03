@@ -19,7 +19,9 @@ app.use(morgan('combined', { stream: logger.stream }));
 
 const NOTIFY_API_KEY = process.env.NOTIFY_API_KEY;
 if (!NOTIFY_API_KEY) {
-  logger.warn('NOTIFY_API_KEY non défini : le service accepte les requêtes sans authentification (développement uniquement).');
+  logger.warn(
+    'NOTIFY_API_KEY non défini : le service accepte les requêtes sans authentification (développement uniquement).'
+  );
 }
 
 // Configuration de Nodemailer (les identifiants ne sont JAMAIS journalisés)
@@ -60,9 +62,17 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.post('/notify', requireApiKey, async (req, res) => {
   const { to, subject, text } = req.body || {};
 
-  if (typeof to !== 'string' || !EMAIL_RE.test(to) ||
-      typeof subject !== 'string' || !subject.trim() || subject.length > 200 || /[\r\n]/.test(subject) ||
-      typeof text !== 'string' || !text.trim() || text.length > 10000) {
+  if (
+    typeof to !== 'string' ||
+    !EMAIL_RE.test(to) ||
+    typeof subject !== 'string' ||
+    !subject.trim() ||
+    subject.length > 200 ||
+    /[\r\n]/.test(subject) ||
+    typeof text !== 'string' ||
+    !text.trim() ||
+    text.length > 10000
+  ) {
     return res.status(400).json({ message: 'Paramètres de notification invalides.' });
   }
 

@@ -18,9 +18,9 @@ app.use(morgan('combined', { stream: logger.stream }));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.post('/update-stock', (req, res) => {
-    const { productId, quantity } = req.body;
-    logger.info('Mise à jour du stock', { productId, quantity });
-    res.send(`Stock mis à jour pour le produit de ID : ${productId}`);
+  const { productId, quantity } = req.body;
+  logger.info('Mise à jour du stock', { productId, quantity });
+  res.send(`Stock mis à jour pour le produit de ID : ${productId}`);
 });
 
 app.listen(PORT, () => logger.info(`Service de gestion des stocks sur le port ${PORT}`));

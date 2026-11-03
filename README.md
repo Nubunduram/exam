@@ -54,6 +54,7 @@ Frontend : http://localhost:3000, API : http://localhost:5000/api/health
 npm --prefix backend test                               # 25 tests API (sécurité, validation, accès)
 CI=true npm --prefix frontend test -- --watchAll=false  # 12 tests (panier, formulaires)
 npm --prefix backend run docs                           # documentation JSDoc -> docs/api/
+npm install && npm run lint && npm run format:check     # ESLint + Prettier (racine)
 ```
 
 ## Documentation

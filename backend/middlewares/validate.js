@@ -10,21 +10,23 @@
  * @returns {express.RequestHandler}
  * @example router.post('/login', validate(schemas.login), login);
  */
-const validate = (schema, source = 'body') => (req, res, next) => {
-  const { error, value } = schema.validate(req[source] ?? {}, {
-    abortEarly: true,
-    stripUnknown: false,
-    convert: true,
-  });
-  if (error) {
-    return res.status(400).json({ message: error.details[0].message });
-  }
-  if (source === 'query') {
-    Object.assign(req.query, value);
-  } else {
-    req[source] = value;
-  }
-  next();
-};
+const validate =
+  (schema, source = 'body') =>
+  (req, res, next) => {
+    const { error, value } = schema.validate(req[source] ?? {}, {
+      abortEarly: true,
+      stripUnknown: false,
+      convert: true,
+    });
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+    if (source === 'query') {
+      Object.assign(req.query, value);
+    } else {
+      req[source] = value;
+    }
+    next();
+  };
 
 module.exports = validate;

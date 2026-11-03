@@ -34,9 +34,7 @@ app.use(helmet());
 
 // CORS : seules les origines listées dans CORS_ORIGIN (séparées par des virgules) sont autorisées,
 // avec envoi des cookies (credentials) pour la session httpOnly.
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
-  .split(',')
-  .map((o) => o.trim());
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map((o) => o.trim());
 app.use(cors({ origin: allowedOrigins, credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE'] }));
 
 app.use(express.json({ limit: '100kb' }));
@@ -64,7 +62,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use((req, res) => res.status(404).json({ message: 'Ressource introuvable.' }));
 
 // Gestionnaire d'erreurs global : évite le crash et ne divulgue jamais la stack au client
-// eslint-disable-next-line no-unused-vars
+
 app.use((err, req, res, next) => {
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ message: 'Corps de requête JSON invalide.' });

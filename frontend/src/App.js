@@ -36,9 +36,30 @@ const router = createBrowserRouter([
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
       { path: 'cart', element: <Cart /> },
-      { path: 'shipping-payment', element: <ProtectedRoute><ShippingPayment /></ProtectedRoute> },
-      { path: 'order', element: <ProtectedRoute><Order /></ProtectedRoute> },
-      { path: 'admin', element: <AdminRoute><Admin /></AdminRoute> },
+      {
+        path: 'shipping-payment',
+        element: (
+          <ProtectedRoute>
+            <ShippingPayment />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'order',
+        element: (
+          <ProtectedRoute>
+            <Order />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin',
+        element: (
+          <AdminRoute>
+            <Admin />
+          </AdminRoute>
+        ),
+      },
       { path: '*', element: <NotFound /> },
     ],
   },

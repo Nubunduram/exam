@@ -6,7 +6,8 @@ const Product = require('./models/Product'); // Assurez-vous que le chemin est c
 dotenv.config();
 
 // Connexion à MongoDB
-mongoose.connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connecté pour le seed'))
   .catch((err) => console.error('Erreur de connexion à MongoDB', err));
 
@@ -56,7 +57,7 @@ const seedProducts = async () => {
     console.log('Jeux de produits insérés avec succès !');
     process.exit();
   } catch (error) {
-    console.error('Erreur lors de l\'insertion des produits', error);
+    console.error("Erreur lors de l'insertion des produits", error);
     process.exit(1);
   }
 };

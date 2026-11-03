@@ -7,8 +7,11 @@ const router = express.Router();
 
 const NOTIFI_SERVICE_URL = process.env.NOTIFI_SERVICE_URL;
 
-router.use('/', proxy(NOTIFI_SERVICE_URL, {
-  proxyReqPathResolver: (req) => req.originalUrl,
-}));
+router.use(
+  '/',
+  proxy(NOTIFI_SERVICE_URL, {
+    proxyReqPathResolver: (req) => req.originalUrl,
+  })
+);
 
 module.exports = router;

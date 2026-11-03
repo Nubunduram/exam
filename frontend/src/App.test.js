@@ -72,7 +72,9 @@ describe('Correctifs E27', () => {
   });
 
   test("inscription : nom d'utilisateur avec balise HTML refusé", () => {
-    expect(validateRegister({ username: "<script>alert('test')</script>", email: 'b@b.fr', password: 'Password1' })).not.toBe('');
+    expect(
+      validateRegister({ username: "<script>alert('test')</script>", email: 'b@b.fr', password: 'Password1' })
+    ).not.toBe('');
   });
 
   test('commande : informations manquantes listées précisément', () => {

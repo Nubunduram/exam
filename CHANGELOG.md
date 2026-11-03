@@ -52,6 +52,7 @@ Catégories : **Ajouté**, **Modifié**, **Corrigé** (bugs, E27), **Sécurité*
 | B16 | Composant `components/ProductList.js` dupliquant `ProtectedRoute` | Supprimé |
 | B17 | Emails de notification envoyés à une adresse codée en dur (`syaob@yahoo.fr`) | Email de confirmation au client + alerte boutique configurable (`ORDER_NOTIFY_EMAIL`) ; email au client à chaque changement de statut |
 | B18 | Double soumission possible des formulaires | Boutons désactivés pendant l'envoi |
+| B20 | Journal d'accès HTTP (morgan) masqué en production : niveau de log `info` supérieur au niveau `http` | Niveau par défaut `http` en production |
 | B19 | `CartContext` : `SET_SHIPPING_ADDRESS` remplaçait l'adresse entière ; état local dupliqué dans `ShippingAddress` | Fusion des champs, composant contrôlé par le contexte |
 
 ### Ajouté
@@ -60,6 +61,7 @@ Catégories : **Ajouté**, **Modifié**, **Corrigé** (bugs, E27), **Sécurité*
 - Catalogue : affichage du stock, bouton désactivé en rupture, confirmation d'ajout au panier.
 - Composant `Alert` (retours utilisateur accessibles, sans `alert()` bloquant).
 - **Tests** : 25 tests API (`node:test` + `supertest`) couvrant sécurité, validation et contrôle d'accès ; 12 tests frontend (reducer, formulaires, étapes de commande). Exécutés dans le CI.
+- **Qualité du code** : ESLint (`eslint.config.js`, règles recommandées + `eqeqeq`, `no-var`, `prefer-const`) et Prettier (`.prettierrc.json`) ; `npm run lint` / `npm run format` ; job « Lint » bloquant dans le CI.
 - **Documentation** : JSDoc sur tout le backend (modules, contrôleurs, middlewares, modèles, validateurs), générée dans `docs/api/` (`npm --prefix backend run docs`) ; commentaires des composants React ; `README.md`.
 
 ### Supprimé

@@ -40,7 +40,9 @@ test('CORS : origine autorisée acceptée avec credentials', async () => {
 });
 
 test('Login : injection NoSQL { "$ne": null } rejetée (400)', async () => {
-  const res = await request(app).post('/api/auth/login').send({ username: { $ne: null }, password: { $ne: null } });
+  const res = await request(app)
+    .post('/api/auth/login')
+    .send({ username: { $ne: null }, password: { $ne: null } });
   assert.strictEqual(res.status, 400);
 });
 
@@ -51,7 +53,9 @@ test('Login : formulaire vide rejeté avec un message clair', async () => {
 });
 
 test('Inscription : mot de passe faible rejeté', async () => {
-  const res = await request(app).post('/api/auth/register').send({ username: 'bob', email: 'bob@test.fr', password: 'abc' });
+  const res = await request(app)
+    .post('/api/auth/register')
+    .send({ username: 'bob', email: 'bob@test.fr', password: 'abc' });
   assert.strictEqual(res.status, 400);
 });
 

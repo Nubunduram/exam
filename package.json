@@ -5,6 +5,19 @@
     "start:gateway": "nodemon gateway/server.js",
     "start:backend": "nodemon backend/server.js",
     "start:frontend": "npm --prefix frontend start",
-    "start:all": "npm-run-all --parallel start:notifications start:stock-management start:gateway start:backend start:frontend"
-  }
+    "start:all": "npm-run-all --parallel start:notifications start:stock-management start:gateway start:backend start:frontend",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"backend/**/*.js\" \"gateway/**/*.js\" \"microservices/**/*.js\" \"frontend/src/**/*.js\"",
+    "format:check": "prettier --check \"backend/**/*.js\" \"gateway/**/*.js\" \"microservices/**/*.js\" \"frontend/src/**/*.js\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10"
+  },
+  "name": "exam-ecommerce",
+  "private": true
 }

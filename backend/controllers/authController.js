@@ -116,7 +116,7 @@ exports.me = async (req, res) => {
  * @returns {200}
  */
 exports.logout = (req, res) => {
-  const { maxAge, ...opts } = cookieOptions(); // eslint-disable-line no-unused-vars
+  const { maxAge, ...opts } = cookieOptions();
   res.clearCookie(AUTH_COOKIE, opts);
   return res.json({ message: 'Déconnexion réussie.' });
 };

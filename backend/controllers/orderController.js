@@ -41,8 +41,9 @@ const sendNotification = async (mail) => {
  * @returns {Promise<void>}
  */
 const releaseStock = (reserved) =>
-  Promise.all(reserved.map(({ productId, quantity }) =>
-    Product.updateOne({ _id: productId }, { $inc: { stock: quantity } })));
+  Promise.all(
+    reserved.map(({ productId, quantity }) => Product.updateOne({ _id: productId }, { $inc: { stock: quantity } }))
+  );
 
 /**
  * Crée une commande pour l'utilisateur connecté.

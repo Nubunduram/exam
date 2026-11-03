@@ -35,7 +35,12 @@ const { ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD, MONGO_URI } = process.env;
       await user.save();
       console.log(`Compte existant "${user.username}" promu administrateur.`);
     } else {
-      user = await User.create({ username: ADMIN_USERNAME, email: ADMIN_EMAIL, password: ADMIN_PASSWORD, role: 'admin' });
+      user = await User.create({
+        username: ADMIN_USERNAME,
+        email: ADMIN_EMAIL,
+        password: ADMIN_PASSWORD,
+        role: 'admin',
+      });
       console.log(`Administrateur "${user.username}" créé.`);
     }
     process.exit(0);

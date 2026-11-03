@@ -15,11 +15,7 @@ const { createLogger, format, transports } = require('winston');
 const SERVICE_NAME = process.env.SERVICE_NAME || 'service';
 const LOG_DIR = process.env.LOG_DIR;
 
-const baseFormat = format.combine(
-  format.timestamp(),
-  format.errors({ stack: true }),
-  format.json()
-);
+const baseFormat = format.combine(format.timestamp(), format.errors({ stack: true }), format.json());
 
 const loggerTransports = [new transports.Console()];
 if (LOG_DIR) {
@@ -31,7 +27,7 @@ if (LOG_DIR) {
 }
 
 const logger = createLogger({
-  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'http' : 'debug'),
   defaultMeta: { service: SERVICE_NAME, env: process.env.APP_ENV || process.env.NODE_ENV || 'development' },
   format: baseFormat,
   transports: loggerTransports,
@@ -44,7 +40,14 @@ const auditLogger = createLogger({
   transports: [
     new transports.Console(),
     ...(LOG_DIR
-      ? [new transports.File({ filename: path.join(LOG_DIR, 'audit.log'), maxsize: 5 * 1024 * 1024, maxFiles: 10, tailable: true })]
+      ? [
+          new transports.File({
+            filename: path.join(LOG_DIR, 'audit.log'),
+            maxsize: 5 * 1024 * 1024,
+            maxFiles: 10,
+            tailable: true,
+          }),
+        ]
       : []),
   ],
 });
